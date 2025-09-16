@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduTech AI Email Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+    .glass-effect:hover {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .code-editor {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 14px;
+      background: #1a202c;
+      border-radius: 12px;
+      padding: 20px;
+      color: #e2e8f0;
+      min-height: 200px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+      line-height: 1.5;
+      border: 1px solid #2d3748;
+    }
+    .preview-frame {
+      border: none;
+      width: 100%;
+      height: 500px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+    .preview-frame:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .tab-button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-button.active {
+      background-color: #4f46e5;
+      color: white;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    .client-button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    .client-button.active {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .message-box {
+      padding: 14px;
+      border-radius: 10px;
+      margin: 12px 0;
+      text-align: center;
+      display: none;
+      animation: fadeIn 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .message-box.success {
+      background: #10b981;
+      color: white;
+    }
+    .message-box.error {
+      background: #ef4444;
+      color: white;
+    }
+    .message-box.warning {
+      background: #f59e0b;
+      color: white;
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .status-indicator.idle {
+      background: rgba(107, 114, 128, 0.2);
+      color: #d1d5db;
+    }
+    .status-indicator.working {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+    .status-indicator.success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+    .status-indicator.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+    input[type="text"], input[type="email"], textarea {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 14px;
+      color: white;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    input[type="text"]:focus, input[type="email"]:focus, textarea:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    }
+    input[type="file"] {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    input[type="file"]::file-selector-button {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-right: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    input[type="file"]::file-selector-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    .modal-content {
+      background: linear-gradient(135deg, rgba(55, 65, 81, 0.95), rgba(31, 41, 55, 0.95));
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      animation: slideUp 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .header-glow {
+      text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f0f0f0;
+    }
+    .section-title i {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="text-white">
+  <div class="container py-8">
+    <div class="text-center mb-10">
+      <h1 class="text-5xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 bg-clip-text text-transparent header-glow">
+        <i class="fas fa-graduation-cap mr-3"></i>EduTech AI Email Generator
+      </h1>
+      <p class="text-xl text-gray-200 mt-3">Generate, preview, and send EduTech promotional emails with AI-powered precision</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- LEFT COLUMN -->
+      <div class="space-y-8">
+        <!-- PROMPT SECTION -->
+        <div class="glass-effect">
+          <label class="block text-sm mb-3 text-gray-300 font-medium">
+            <i class="fas fa-lightbulb mr-2 text-yellow-400"></i>Prompt
+          </label>
+          <textarea id="prompt" rows="5" class="w-full text-gray-200 rounded-lg p-4" placeholder="Describe the email you want to generate..."></textarea>
+
+          <div class="flex gap-3 mt-5">
+            <button id="generateBtn" class="btn btn-primary flex-1">
+              <i class="fas fa-magic"></i>
+              <span id="generateBtnText">Generate Email</span>
+              <div id="generateSpinner" class="hidden spinner"></div>
+            </button>
+            <button id="copyBtn" disabled class="btn btn-secondary">
+              <i class="fas fa-copy"></i> Copy
+            </button>
+            <button id="sendBtn" disabled class="btn btn-success">
+              <i class="fas fa-paper-plane"></i> Send
+            </button>
+          </div>
+        </div>
+
+        <!-- STATUS SECTION -->
+        <div class="glass-effect">
+          <div class="flex items-center justify-between">
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Status</h3>
+            <div id="statusIndicator" class="status-indicator idle">
+              <i class="fas fa-circle"></i>
+              <span id="statusText">Ready</span>
+            </div>
+          </div>
+          
+          <div id="messageBox" class="message-box"></div>
+          
+          <div class="mt-5">
+            <h3 class="section-title"><i class="fas fa-bulk"></i> Bulk Send via CSV</h3>
+            <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-gray-300 mt-2"/>
+            <button id="bulkSendBtn" disabled class="btn btn-warning w-full mt-4">
+              <i class="fas fa-envelope-bulk"></i> Send Bulk Emails
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="space-y-8">
+        <!-- EMAIL TEMPLATE SECTION -->
+        <div class="glass-effect">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="section-title"><i class="fas fa-code"></i> Generated Email Template</h3>
+            <span class="text-xs text-gray-400">HTML Editor</span>
+          </div>
+          <textarea id="emailTemplate" class="code-editor w-full h-72"></textarea>
+        </div>
+
+        <!-- PREVIEW SECTION -->
+        <div class="glass-effect">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="section-title"><i class="fas fa-eye"></i> Live Preview</h3>
+            <span id="previewStatus" class="text-sm text-gray-300">Ready</span>
+          </div>
+          <iframe id="previewFrame" class="preview-frame"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="sendEmailModal" class="modal">
+    <div class="modal-content">
+      <h3 class="text-xl font-semibold mb-5 flex items-center gap-2">
+        <i class="fas fa-paper-plane text-blue-400"></i> Send Email
+      </h3>
+      <label class="block text-sm mb-2 text-gray-300">Recipient Email</label>
+      <input id="recipientEmail" type="email" class="w-full text-gray-200 rounded p-3 mb-5" placeholder="recipient@example.com"/>
+      <div class="flex gap-3">
+        <button id="confirmSendBtn" class="btn btn-success flex-1">
+          <i class="fas fa-check"></i> Confirm & Send
+        </button>
+        <button onclick="document.getElementById('sendEmailModal').classList.add('hidden')" class="btn btn-secondary">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // All JavaScript remains exactly the same as in the original
+    const promptInput=document.getElementById('prompt');
+    const emailTemplate=document.getElementById('emailTemplate');
+    const generateBtn=document.getElementById('generateBtn');
+    const generateBtnText=document.getElementById('generateBtnText');
+    const generateSpinner=document.getElementById('generateSpinner');
+    const copyBtn=document.getElementById('copyBtn');
+    const sendBtn=document.getElementById('sendBtn');
+    const bulkSendBtn=document.getElementById('bulkSendBtn');
+    const csvFileInput=document.getElementById('csvFileInput');
+    const previewFrame=document.getElementById('previewFrame');
+    const messageBox=document.getElementById('messageBox');
+    const statusText=document.getElementById('statusText');
+    const recipientEmail=document.getElementById('recipientEmail');
+    const sendModal=document.getElementById('sendEmailModal');
+    const confirmSendBtn=document.getElementById('confirmSendBtn');
+
+    let currentSubject='Promotional Email';
+
+    generateBtn.onclick=async()=>{
+      const prompt=promptInput.value.trim();
+      if(!prompt){showMessage('Enter a prompt','warning');return;}
+      setStatus('working','Generating...');
+      generateBtn.disabled=true;generateBtnText.textContent='Generating...';generateSpinner.classList.remove('hidden');
+      try{
+        const res=await fetch('/generate-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Failed');
+        emailTemplate.value=data.email; currentSubject=data.subject;
+        copyBtn.disabled=false; sendBtn.disabled=false; bulkSendBtn.disabled=!csvFileInput.files[0];
+        updatePreview();
+        showMessage('Email generated!','success'); setStatus('success','Ready');
+      }catch(e){showMessage(e.message,'error');setStatus('error','Failed');}
+      finally{generateBtn.disabled=false;generateBtnText.textContent='Generate Email';generateSpinner.classList.add('hidden');}
+    };
+
+    copyBtn.onclick=()=>{navigator.clipboard.writeText(emailTemplate.value).then(()=>showMessage('Copied!','success'));};
+    sendBtn.onclick=()=>sendModal.classList.remove('hidden');
+    confirmSendBtn.onclick=async()=>{
+      const recipient=recipientEmail.value.trim(); const body=emailTemplate.value;
+      if(!recipient){showMessage('Enter recipient','warning');return;}
+      try{
+        const res=await fetch('/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient,subject:currentSubject,body})});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Failed');
+        showMessage(data.message,'success'); sendModal.classList.add('hidden'); recipientEmail.value='';
+      }catch(e){showMessage(e.message,'error');}
+    };
+
+    bulkSendBtn.onclick=async()=>{
+      const csv=csvFileInput.files[0]; const body=emailTemplate.value;
+      if(!csv){showMessage('Select CSV','warning');return;}
+      if(!body.trim()){showMessage('No content','warning');return;}
+      const fd=new FormData(); fd.append('csv_file',csv); fd.append('subject',currentSubject); fd.append('email_data',body);
+      bulkSendBtn.disabled=true; bulkSendBtn.textContent='Sending...'; setStatus('working','Bulk sending...');
+      try{
+        const res=await fetch('/bulk-send',{method:'POST',body:fd});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Bulk failed');
+        showMessage(`Sent: ${data.sent}, Failed: ${data.failed.length}`,'success'); setStatus('success','Done'); csvFileInput.value='';
+      }catch(e){showMessage(e.message,'error');setStatus('error','Bulk failed');}
+      finally{bulkSendBtn.disabled=false;bulkSendBtn.textContent='Send Bulk Emails';}
+    };
+
+    csvFileInput.onchange=()=>{bulkSendBtn.disabled=!emailTemplate.value.trim()||!csvFileInput.files[0];};
+
+    function updatePreview(){
+      const doc=previewFrame.contentDocument||previewFrame.contentWindow.document;
+      doc.open(); doc.write(emailTemplate.value||'<p>No content</p>'); doc.close();
+    }
+    emailTemplate.oninput=()=>{updatePreview();copyBtn.disabled=!emailTemplate.value.trim();sendBtn.disabled=!emailTemplate.value.trim();bulkSendBtn.disabled=!csvFileInput.files[0];};
+
+    function showMessage(msg,type){messageBox.textContent=msg;messageBox.className='message-box '+type;messageBox.style.display='block';setTimeout(()=>messageBox.style.display='none',4000);}
+    function setStatus(state,text){statusText.textContent=text;}
+  </script>
+</body>
+</html>
