@@ -99,7 +99,7 @@ def generate_email():
             return jsonify({'error': 'Failed to generate email content'}), 500
 
         subject_line = email_content.splitlines()[0]
-        subject = subject_line.split(":", 1)[1].strip() if "subject:" in subject_line.lower() else "Promotional Email"
+        subject = subject_line.split(":", 1)[1].strip() if "subject:" in subject_line.lower() else "Registration for Workshop Infy Skill Edutech"
 
         return jsonify({'email': email_content, 'subject': subject})
 
@@ -117,7 +117,7 @@ def send_email_route():
     try:
         data = request.get_json()
         recipient = data.get('recipient')
-        subject = data.get('subject', 'Promotional Email')
+        subject = data.get('subject', 'Registration for Workshop Infy Skill Edutech')
         body = data.get('body')
 
         if not all([recipient, subject, body]):
@@ -126,7 +126,7 @@ def send_email_route():
         msg = MIMEMultipart()
         msg['From'] = SMTP_USERNAME
         msg['To'] = recipient
-        msg['Subject'] = subject
+        msg['Subject'] = "Registration for Workshop Infy Skill Edutech"
         msg.attach(MIMEText(body, 'html'))
 
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -208,7 +208,7 @@ def bulk_send_route():
                 msg = MIMEMultipart()
                 msg['From'] = SMTP_USERNAME
                 msg['To'] = to_email
-                msg['Subject'] = subject
+                msg['Subject'] = "Registration for Workshop Infy Skill Edutech"
                 msg.attach(MIMEText(personalized_content, 'html'))
 
                 for file_path in attachments:
