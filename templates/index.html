@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduTech AI Email Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -273,7 +274,12 @@
           <label class="block text-sm mb-3 text-gray-300 font-medium">
             <i class="fas fa-lightbulb mr-2 text-yellow-400"></i>Prompt
           </label>
-          <textarea id="prompt" rows="5" class="w-full text-gray-200 rounded-lg p-4" placeholder="Describe the email you want to generate..."></textarea>
+          <textarea id="prompt" rows="4" class="w-full text-gray-200 rounded-lg p-4" placeholder="Describe the email you want to generate..."></textarea>
+          
+          <label class="block text-sm mb-2 mt-4 text-gray-300 font-medium">
+            <i class="fas fa-tag mr-2 text-blue-400"></i>Email Subject
+          </label>
+          <input id="emailSubject" type="text" class="w-full text-gray-200 rounded-lg p-3" placeholder="Enter dynamic email subject (use [name], [company] etc. for personalization)"/>
 
           <div class="flex gap-3 mt-5">
             <button id="generateBtn" class="btn btn-primary flex-1">
@@ -288,6 +294,28 @@
               <i class="fas fa-paper-plane"></i> Send
             </button>
           </div>
+        </div>
+
+        <!-- MAIL COUNTS SECTION -->
+        <div class="glass-effect">
+          <h3 class="section-title"><i class="fas fa-chart-bar"></i> Mail Statistics</h3>
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-blue-600 bg-opacity-20 rounded-lg p-4 text-center">
+              <div class="text-2xl font-bold text-blue-400" id="totalCount">0</div>
+              <div class="text-sm text-gray-300">Total Mails</div>
+            </div>
+            <div class="bg-green-600 bg-opacity-20 rounded-lg p-4 text-center">
+              <div class="text-2xl font-bold text-green-400" id="sentCount">0</div>
+              <div class="text-sm text-gray-300">Sent Mails</div>
+            </div>
+            <div class="bg-red-600 bg-opacity-20 rounded-lg p-4 text-center">
+              <div class="text-2xl font-bold text-red-400" id="failedCount">0</div>
+              <div class="text-sm text-gray-300">Failed Mails</div>
+            </div>
+          </div>
+          <button id="clearDataBtn" class="btn btn-warning w-full mt-4">
+            <i class="fas fa-trash-alt"></i> Clear All Logs & CSV Data
+          </button>
         </div>
 
         <!-- STATUS SECTION -->
@@ -308,6 +336,41 @@
             <button id="bulkSendBtn" disabled class="btn btn-warning w-full mt-4">
               <i class="fas fa-envelope-bulk"></i> Send Bulk Emails
             </button>
+          </div>
+        </div>
+
+        <!-- REAL-TIME LOGS SECTION -->
+        <div class="glass-effect">
+          <h3 class="section-title"><i class="fas fa-stream"></i> Real-time Email Logs</h3>
+          <div id="realTimeLogs" class="bg-gray-900 rounded-lg p-4 h-48 overflow-y-auto text-sm font-mono">
+            <div class="text-gray-400">Waiting for email activities...</div>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button id="clearLogsBtn" class="btn btn-secondary text-xs">
+              <i class="fas fa-trash"></i> Clear
+            </button>
+            <button id="refreshFilesBtn" class="btn btn-secondary text-xs">
+              <i class="fas fa-refresh"></i> Refresh Files
+            </button>
+          </div>
+        </div>
+
+        <!-- DOWNLOAD SECTION -->
+        <div class="glass-effect">
+          <h3 class="section-title"><i class="fas fa-download"></i> Download Files</h3>
+          
+          <div class="mb-4">
+            <h4 class="text-sm font-medium text-gray-300 mb-2">CSV Files (Email Records)</h4>
+            <div id="csvFilesList" class="space-y-2 max-h-32 overflow-y-auto">
+              <div class="text-gray-400 text-sm">No CSV files available</div>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="text-sm font-medium text-gray-300 mb-2">Log Files (Detailed Logs)</h4>
+            <div id="logFilesList" class="space-y-2 max-h-32 overflow-y-auto">
+              <div class="text-gray-400 text-sm">No log files available</div>
+            </div>
           </div>
         </div>
       </div>
@@ -341,6 +404,8 @@
       <h3 class="text-xl font-semibold mb-5 flex items-center gap-2">
         <i class="fas fa-paper-plane text-blue-400"></i> Send Email
       </h3>
+      <label class="block text-sm mb-2 text-gray-300">Recipient Name (Optional)</label>
+      <input id="recipientName" type="text" class="w-full text-gray-200 rounded p-3 mb-3" placeholder="John Doe"/>
       <label class="block text-sm mb-2 text-gray-300">Recipient Email</label>
       <input id="recipientEmail" type="email" class="w-full text-gray-200 rounded p-3 mb-5" placeholder="recipient@example.com"/>
       <div class="flex gap-3">
@@ -355,8 +420,12 @@
   </div>
 
   <script>
-    // All JavaScript remains exactly the same as in the original
+    // Initialize Socket.IO
+    const socket = io();
+    
+    // DOM Elements
     const promptInput=document.getElementById('prompt');
+    const emailSubject=document.getElementById('emailSubject');
     const emailTemplate=document.getElementById('emailTemplate');
     const generateBtn=document.getElementById('generateBtn');
     const generateBtnText=document.getElementById('generateBtnText');
@@ -369,10 +438,51 @@
     const messageBox=document.getElementById('messageBox');
     const statusText=document.getElementById('statusText');
     const recipientEmail=document.getElementById('recipientEmail');
+    const recipientName=document.getElementById('recipientName');
     const sendModal=document.getElementById('sendEmailModal');
     const confirmSendBtn=document.getElementById('confirmSendBtn');
+    const realTimeLogs=document.getElementById('realTimeLogs');
+    const clearLogsBtn=document.getElementById('clearLogsBtn');
+    const refreshFilesBtn=document.getElementById('refreshFilesBtn');
+    const csvFilesList=document.getElementById('csvFilesList');
+    const logFilesList=document.getElementById('logFilesList');
+    const totalCount=document.getElementById('totalCount');
+    const sentCount=document.getElementById('sentCount');
+    const failedCount=document.getElementById('failedCount');
+    const clearDataBtn=document.getElementById('clearDataBtn');
 
     let currentSubject='Promotional Email';
+
+    // Socket.IO event listeners
+    socket.on('email_log', function(data) {
+      addLogEntry(data);
+    });
+
+    function addLogEntry(data) {
+      const logEntry = document.createElement('div');
+      logEntry.className = `mb-2 p-2 rounded text-xs ${data.status === 'success' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`;
+      logEntry.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="font-semibold">${data.status.toUpperCase()}</span>: ${data.email} ${data.name ? `(${data.name})` : ''}
+          </div>
+          <span class="text-xs opacity-75">${data.timestamp}</span>
+        </div>
+        <div class="text-xs opacity-75 mt-1">Subject: ${data.subject}</div>
+        ${data.error ? `<div class="text-xs text-red-300 mt-1">Error: ${data.error}</div>` : ''}
+      `;
+      
+      if (realTimeLogs.firstChild && realTimeLogs.firstChild.textContent.includes('Waiting for email activities')) {
+        realTimeLogs.innerHTML = '';
+      }
+      
+      realTimeLogs.insertBefore(logEntry, realTimeLogs.firstChild);
+      
+      // Keep only last 50 entries
+      while (realTimeLogs.children.length > 50) {
+        realTimeLogs.removeChild(realTimeLogs.lastChild);
+      }
+    }
 
     generateBtn.onclick=async()=>{
       const prompt=promptInput.value.trim();
@@ -383,7 +493,9 @@
         const res=await fetch('/generate-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
         const data=await res.json();
         if(!res.ok) throw new Error(data.error||'Failed');
-        emailTemplate.value=data.email; currentSubject=data.subject;
+        emailTemplate.value=data.email; 
+        currentSubject=data.subject;
+        emailSubject.value=currentSubject; // Set the subject input
         copyBtn.disabled=false; sendBtn.disabled=false; bulkSendBtn.disabled=!csvFileInput.files[0];
         updatePreview();
         showMessage('Email generated!','success'); setStatus('success','Ready');
@@ -391,33 +503,137 @@
       finally{generateBtn.disabled=false;generateBtnText.textContent='Generate Email';generateSpinner.classList.add('hidden');}
     };
 
+    // Update current subject when user changes it
+    emailSubject.oninput=()=>{currentSubject=emailSubject.value||'Promotional Email';};
+
     copyBtn.onclick=()=>{navigator.clipboard.writeText(emailTemplate.value).then(()=>showMessage('Copied!','success'));};
     sendBtn.onclick=()=>sendModal.classList.remove('hidden');
+    
     confirmSendBtn.onclick=async()=>{
-      const recipient=recipientEmail.value.trim(); const body=emailTemplate.value;
+      const recipient=recipientEmail.value.trim(); 
+      const name=recipientName.value.trim();
+      const body=emailTemplate.value;
+      const subject=emailSubject.value||currentSubject;
       if(!recipient){showMessage('Enter recipient','warning');return;}
       try{
-        const res=await fetch('/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient,subject:currentSubject,body})});
+        const res=await fetch('/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient,name,subject,body})});
         const data=await res.json();
         if(!res.ok) throw new Error(data.error||'Failed');
-        showMessage(data.message,'success'); sendModal.classList.add('hidden'); recipientEmail.value='';
+        showMessage(data.message,'success'); sendModal.classList.add('hidden'); 
+        recipientEmail.value=''; recipientName.value='';
+        refreshMailCounts(); // Refresh counts after single send
       }catch(e){showMessage(e.message,'error');}
     };
 
     bulkSendBtn.onclick=async()=>{
       const csv=csvFileInput.files[0]; const body=emailTemplate.value;
+      const subject=emailSubject.value||currentSubject;
       if(!csv){showMessage('Select CSV','warning');return;}
       if(!body.trim()){showMessage('No content','warning');return;}
-      const fd=new FormData(); fd.append('csv_file',csv); fd.append('subject',currentSubject); fd.append('email_data',body);
+      const fd=new FormData(); fd.append('csv_file',csv); fd.append('subject',subject); fd.append('email_data',body);
       bulkSendBtn.disabled=true; bulkSendBtn.textContent='Sending...'; setStatus('working','Bulk sending...');
       try{
         const res=await fetch('/bulk-send',{method:'POST',body:fd});
         const data=await res.json();
         if(!res.ok) throw new Error(data.error||'Bulk failed');
         showMessage(`Sent: ${data.sent}, Failed: ${data.failed.length}`,'success'); setStatus('success','Done'); csvFileInput.value='';
+        refreshFiles(); // Refresh file list and counts after bulk send
       }catch(e){showMessage(e.message,'error');setStatus('error','Bulk failed');}
       finally{bulkSendBtn.disabled=false;bulkSendBtn.textContent='Send Bulk Emails';}
     };
+
+    clearLogsBtn.onclick=()=>{
+      realTimeLogs.innerHTML='<div class="text-gray-400">Logs cleared...</div>';
+    };
+
+    refreshFilesBtn.onclick=refreshFiles;
+
+    clearDataBtn.onclick=async()=>{
+      if(!confirm('Are you sure you want to clear all logs and CSV data? This action cannot be undone.')){
+        return;
+      }
+      clearDataBtn.disabled=true;
+      clearDataBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Clearing...';
+      try{
+        const res=await fetch('/clear-data',{method:'POST'});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Failed to clear data');
+        showMessage(data.message,'success');
+        // Clear real-time logs display
+        realTimeLogs.innerHTML='<div class="text-gray-400">Logs cleared...</div>';
+        // Refresh counts and files
+        await refreshMailCounts();
+        await refreshFiles();
+      }catch(e){
+        showMessage(e.message,'error');
+      }finally{
+        clearDataBtn.disabled=false;
+        clearDataBtn.innerHTML='<i class="fas fa-trash-alt"></i> Clear All Logs & CSV Data';
+      }
+    };
+
+    async function refreshMailCounts() {
+      try {
+        const res = await fetch('/get-mail-counts');
+        const data = await res.json();
+        if (res.ok) {
+          totalCount.textContent = data.total_count;
+          sentCount.textContent = data.sent_count;
+          failedCount.textContent = data.failed_count;
+        }
+      } catch (e) {
+        console.error('Failed to refresh mail counts:', e);
+      }
+    }
+
+    async function refreshFiles() {
+      try {
+        const res = await fetch('/list-files');
+        const data = await res.json();
+        
+        // Update CSV files list
+        if (data.csv_files.length > 0) {
+          csvFilesList.innerHTML = data.csv_files.map(file => `
+            <div class="flex justify-between items-center bg-gray-800 p-2 rounded text-xs">
+              <div>
+                <div class="font-medium">${file.name}</div>
+                <div class="text-gray-400">${(file.size/1024).toFixed(1)}KB - ${file.modified}</div>
+              </div>
+              <a href="${file.download_url}" class="btn btn-primary text-xs py-1 px-2">
+                <i class="fas fa-download"></i>
+              </a>
+            </div>
+          `).join('');
+        } else {
+          csvFilesList.innerHTML = '<div class="text-gray-400 text-sm">No CSV files available</div>';
+        }
+        
+        // Update log files list
+        if (data.log_files.length > 0) {
+          logFilesList.innerHTML = data.log_files.map(file => `
+            <div class="flex justify-between items-center bg-gray-800 p-2 rounded text-xs">
+              <div>
+                <div class="font-medium flex items-center gap-2">
+                  ${file.name}
+                  <span class="px-2 py-1 rounded text-xs ${file.status === 'success' ? 'bg-green-600' : 'bg-red-600'}">${file.status}</span>
+                </div>
+                <div class="text-gray-400">${(file.size/1024).toFixed(1)}KB - ${file.modified}</div>
+              </div>
+              <a href="${file.download_url}" class="btn btn-primary text-xs py-1 px-2">
+                <i class="fas fa-download"></i>
+              </a>
+            </div>
+          `).join('');
+        } else {
+          logFilesList.innerHTML = '<div class="text-gray-400 text-sm">No log files available</div>';
+        }
+        
+        // Also refresh mail counts when refreshing files
+        await refreshMailCounts();
+      } catch (e) {
+        showMessage('Failed to refresh files', 'error');
+      }
+    }
 
     csvFileInput.onchange=()=>{bulkSendBtn.disabled=!emailTemplate.value.trim()||!csvFileInput.files[0];};
 
@@ -429,6 +645,12 @@
 
     function showMessage(msg,type){messageBox.textContent=msg;messageBox.className='message-box '+type;messageBox.style.display='block';setTimeout(()=>messageBox.style.display='none',4000);}
     function setStatus(state,text){statusText.textContent=text;}
+
+    // Initialize file list and mail counts on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshFiles();
+      refreshMailCounts();
+    });
   </script>
 </body>
 </html>
